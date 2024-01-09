@@ -38,6 +38,7 @@ if __name__ == "__main__":
         classes, scores, boxes = model.detect(frame, Conf_threshold, NMS_threshold)
 
         for classid, score, box in zip(classes, scores, boxes):
+            # '2:car' or '5:bus' or '7:truck
             if (score > Conf_threshold) and (classid in [2, 5, 7]):
                 color = (0, 255, 0)
                 class_label = class_name[int(classid)]

@@ -1,4 +1,4 @@
 # Ignore video files
-*.mp4
+input/
 # Ignore setup files
 yolo_setup/
