@@ -2,3 +2,6 @@
 input/
 # Ignore setup files
 yolo_setup/
+# Ignore parklib files
+parklib/
+*.txt
