@@ -9,3 +9,18 @@ Download [input folder and yolo_setup folder](https://drive.google.com/drive/fol
 
 ### Dependencies
   OpenCV:  `pip install opencv-python`
+
+
+### Sample Run
+1. `draw_rect.py`
+```
+  Enter the filename of the reference image (with extension): input/demo-ref.jpg
+  Enter the desired filename for the parking spaces (without extension): demo.txt
+```
+3. `detect_park.py`
+```
+  Enter the filename of the parking spaces (with extension): parklib/demo.txt
+  Enter the filename of the reference image (with extension): input/demo-ref.jpg
+  Enter the filename of the video file (with extension): input/demo.mp4
+  Enter the filename of the output video file (without extension): demo-output
+```
