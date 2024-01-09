@@ -15,7 +15,7 @@ Download [input folder and yolo_setup folder](https://drive.google.com/drive/fol
 1. `draw_rect.py`
 ```
   Enter the filename of the reference image (with extension): input/demo-ref.jpg
-  Enter the desired filename for the parking spaces (without extension): demo.txt
+  Enter the desired filename for the parking spaces (without extension): demo
 ```
 3. `detect_park.py`
 ```
