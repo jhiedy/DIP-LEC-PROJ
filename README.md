@@ -24,3 +24,6 @@ Download [input folder and yolo_setup folder](https://drive.google.com/drive/fol
   Enter the filename of the video file (with extension): input/demo.mp4
   Enter the filename of the output video file (without extension): demo-output
 ```
+
+### Demo Video Source
+https://thehustle.co/covid-19-business-of-parking-lots/
