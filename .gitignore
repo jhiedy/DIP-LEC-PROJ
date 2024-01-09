@@ -1,0 +1,4 @@
+# Ignore video files
+*.mp4
+# Ignore setup files
+yolo_setup/
