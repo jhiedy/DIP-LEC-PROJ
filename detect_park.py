@@ -1,5 +1,8 @@
 import cv2
 
+#TODO: ADD COUNTER FOR AVAILABLE PARKING SPACE
+#TODO: IMPLEMENT YOLO TO CLASSIFY OBJECT WITHIN BOUNDING BOX
+
 def detect_cars(reference, current, parking_spaces, color_changed):
     gray_reference = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
     gray_current = cv2.cvtColor(current, cv2.COLOR_BGR2GRAY)
