@@ -1,0 +1,158 @@
+import cv2
+import numpy as np
+
+
+# Function to load YOLOv4 model
+def load_yolov4():
+    net = cv2.dnn.readNet("yolo_setup/yolov4.weights", "yolo_setup/yolov4.cfg")
+    layers_names = net.getLayerNames()
+    output_layers = [layers_names[i - 1] for i in net.getUnconnectedOutLayers()]
+    return net, output_layers
+
+
+def apply_nms(boxes, confidence_scores, iou_threshold=0.4):
+    indices = cv2.dnn.NMSBoxes(boxes, confidence_scores, score_threshold=0.5, nms_threshold=iou_threshold)
+    
+    # Check if indices are in the expected format
+    if len(indices) > 0 and isinstance(indices[0], list):
+        # If indices are lists (usual case)
+        return [boxes[i[0]] for i in indices]
+    else:
+        # If indices are just numbers (numpy array of single elements)
+        return [boxes[i] for i in indices]
+
+
+# Modified detect_cars_yolov4 function
+def detect_cars_yolov4(net, output_layers, frame, parking_spaces):
+    height, width, _ = frame.shape
+    blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+    net.setInput(blob)
+    outs = net.forward(output_layers)
+
+    parking_status = ["Available"] * len(parking_spaces)
+    boxes = []
+    confidences = []
+
+    for out in outs:
+        for detection in out:
+            scores = detection[5:]
+            class_id = np.argmax(scores)
+            confidence = scores[class_id]
+            if confidence > 0.5 and (class_id in [2, 5, 7]):  # Class ID 2 is for cars
+                center_x = int(detection[0] * width)
+                center_y = int(detection[1] * height)
+                w = int(detection[2] * width)
+                h = int(detection[3] * height)
+                x = int(center_x - w / 2)
+                y = int(center_y - h / 2)
+
+                boxes.append([x, y, w, h])
+                confidences.append(float(confidence))
+
+    # Apply Non-Maximum Suppression
+    final_boxes = apply_nms(boxes, confidences)
+
+    for x, y, w, h in final_boxes:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        cv2.putText(frame, 'Car', (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+        for index, (x1, y1, x2, y2) in enumerate(parking_spaces):
+            if x1 < x + w/2 < x2 and y1 < y + h/2 < y2 and parking_status[index] == "Available":
+                parking_status[index] = "Occupied"
+
+    return parking_status, final_boxes
+
+
+
+
+if __name__ == "__main__":
+    # Default configurations
+    default_config = {
+        "parking_filename": "parklib/demo2.txt",
+        "reference_filename": "input/stationary_ref.png",
+        "video_filename": "input/stationary_reversed.mp4",
+        "output_filename": "demo-output2"
+    }
+
+    # Prompt for using default configuration
+    use_default = input("Do you want to use the pre-configured options? (y/n): ").lower()
+    if use_default == 'y':
+        config = default_config
+    else:
+        config = {
+            "parking_filename": input("Enter the filename of the parking spaces (with extension): "),
+            "reference_filename": input("Enter the filename of the reference image (with extension): "),
+            "video_filename": input("Enter the filename of the video file (with extension): "),
+            "output_filename": input("Enter the filename of the output video file (without extension): ")
+        }
+
+    # Load parking spaces
+    parking_spaces = []
+    with open(config["parking_filename"], 'r') as file:
+        lines = file.readlines()
+        for line in lines:
+            coords = list(map(int, line.strip().split(',')))
+            parking_spaces.append(coords)
+
+    # Load reference image
+    reference_image = cv2.imread(config["reference_filename"])
+    if reference_image is None:
+        print("Invalid filename or file format. Please try again.")
+        exit()
+
+     # Load YOLOv4 model
+    net, output_layers = load_yolov4()
+
+    # Setup video capture
+    cap = cv2.VideoCapture(config["video_filename"])
+
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    sidebar_width = 200
+
+    # Setup video writer
+    out = cv2.VideoWriter(f"output/{config['output_filename']}.avi", cv2.VideoWriter_fourcc('M','J','P','G'), fps, (frame_width + sidebar_width, frame_height))
+
+    color_changed = set()  # Store indices of parking spaces with changed color
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Use YOLOv4 for car detection in each frame
+        parking_status, cars_bboxes = detect_cars_yolov4(net, output_layers, frame, parking_spaces)
+
+        # Draw rectangles for parking spaces based on their status
+        for i, space in enumerate(parking_spaces):
+            x1, y1, x2, y2 = space
+            if parking_status[i] == "Available":
+                color = (0, 255, 0)  # Green for available spots
+            else:
+                color = (0, 0, 255)  # Red for occupied spots
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 1)  # Reduced thickness to 1
+
+
+        # Draw sidebar
+        frame_with_sidebar = np.zeros((frame_height, frame_width + sidebar_width, 3), dtype=np.uint8)
+        frame_with_sidebar[:, :frame_width] = frame  # Copy original frame
+
+        # Display parking status
+        for i, status in enumerate(parking_status):
+            text = f"Spot {i}: {status}"
+            color = (0, 255, 0) if status == "Available" else (0, 0, 255)
+            cv2.putText(frame_with_sidebar, text, (frame_width + 10, 30 + i * 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+        available_spots = parking_status.count('Available')
+        cv2.putText(frame_with_sidebar, f"Available Spots: { available_spots}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        cv2.imshow('Parking Space Detection', frame_with_sidebar)
+        out.write(frame_with_sidebar)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
