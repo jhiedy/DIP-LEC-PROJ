@@ -1,7 +1,6 @@
 import cv2
 
-#TODO: ADD COUNTER FOR AVAILABLE PARKING SPACE
-#TODO: IMPLEMENT YOLO TO CLASSIFY OBJECT WITHIN BOUNDING BOX
+#TODO: IMPLEMENT YOLO TO CLASSIFY VEHICLES WITHIN BOUNDING BOX
 
 def detect_cars(reference, current, parking_spaces, color_changed):
     gray_reference = cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY)
@@ -22,19 +21,21 @@ def detect_cars(reference, current, parking_spaces, color_changed):
         if cv2.countNonZero(threshold_diff_roi) > 0:
             changed_indices.add(index)
 
+    unchanged_indices = set(range(len(parking_spaces))) - changed_indices
+    available_spots = len(unchanged_indices)
+
     for index, parking_space in enumerate(parking_spaces):
         x1, y1, x2, y2 = parking_space
 
         if index in changed_indices:
-            cv2.rectangle(current, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(current, (x1, y1), (x2, y2), (0, 0, 255), 2)
             color_changed.add(index)
         else:
-            cv2.rectangle(current, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            cv2.rectangle(current, (x1, y1), (x2, y2), (0, 255, 0), 2)
             if index in color_changed:
                 color_changed.remove(index)
 
-    return color_changed
-
+    return color_changed, available_spots
 if __name__ == "__main__":
     # Main part of the code
     parking_filename = input("Enter the filename of the parking spaces (with extension): ")
@@ -63,6 +64,7 @@ if __name__ == "__main__":
 
     prev_frame = None
     color_changed = set()  # Store indices of parking spaces with changed color
+    available_spots = len(parking_spaces)  # Initialize available spots with total parking spaces
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -72,7 +74,9 @@ if __name__ == "__main__":
         if prev_frame is None:
             prev_frame = frame.copy()
 
-        color_changed = detect_cars(reference_image, frame, parking_spaces, color_changed)
+        color_changed, available_spots = detect_cars(reference_image, frame, parking_spaces, color_changed)
+
+        cv2.putText(frame, f"Available Spots: {available_spots}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
 
         cv2.imshow('Detected Cars', frame)
         out.write(frame)
